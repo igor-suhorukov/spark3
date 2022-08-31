@@ -8,7 +8,9 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.ArrowUtils;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @UtilityClass
 public class SchemaUtils {
@@ -20,6 +22,14 @@ public class SchemaUtils {
                                 field.isNullable(),
                                 Metadata.empty()/*todo fill metadata */)).toArray(StructField[]::new);
         return new StructType(structFields);
+    }
+
+    public static Schema arrowSchema(StructType sparkSchema){
+        List<StructField> fields = Arrays.asList(sparkSchema.fields());
+        return new Schema(fields.stream().
+                map(structField -> ArrowUtils.toArrowField(
+                        structField.name(),structField.dataType(),structField.nullable(),"UTC")).
+                collect(Collectors.toList()));
     }
 
     public static String sparkDDLSchema(Schema arrowSchema){
