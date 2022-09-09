@@ -11,14 +11,14 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.ArrowUtils;
 import scala.Option;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @UtilityClass
 public class SchemaUtils {
+
+    public static final String COMMENT = "comment";
+
     public static StructType sparkSchema(Schema arrowSchema){
         List<Field> fields = arrowSchema.getFields();
         StructField[] structFields = fields.stream().map(field -> {
@@ -34,7 +34,17 @@ public class SchemaUtils {
     }
 
     public static Schema arrowSchema(StructType sparkSchema){
+        return arrowSchema(sparkSchema, null);
+    }
+
+    public static Schema arrowSchema(StructType sparkSchema, String schemaComment){
         List<StructField> fields = Arrays.asList(sparkSchema.fields());
+        Map<String, String> schemaMetadata;
+        if (schemaComment == null || schemaComment.isEmpty()){
+            schemaMetadata = null;
+        } else {
+            schemaMetadata = Collections.singletonMap(COMMENT, schemaComment);
+        }
         return new Schema(fields.stream().
                 map(structField -> {
                     Field field = ArrowUtils.toArrowField(
@@ -45,12 +55,12 @@ public class SchemaUtils {
                     } else {
                         FieldType fieldType = field.getFieldType();
                         Map<String, String> metadata = new HashMap<>(field.getMetadata());
-                        metadata.put("comment", comment.get());
+                        metadata.put(COMMENT, comment.get());
                         return new Field(field.getName(),new FieldType(fieldType.isNullable(),
                                 fieldType.getType(), field.getDictionary(), metadata), field.getChildren());
                     }
                 }).
-                collect(Collectors.toList()));
+                collect(Collectors.toList()), schemaMetadata);
     }
 
     public static String sparkDDLSchema(Schema arrowSchema){
